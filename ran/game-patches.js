@@ -15,17 +15,17 @@
         '.gpGame{border:1px solid rgba(255,255,255,.12);background:#151b27;border-radius:9px;padding:11px 12px;margin:7px 0;cursor:pointer}',
         '.gpGame:focus,.gpGame:hover{border-color:#ffd700;background:#1c2433}',
         '.gpGameName{font-size:1rem;font-weight:800;color:#fff}',
+        '.gpIds{font-size:.83rem;color:#9fd2ff;margin-top:4px;word-break:break-word}',
         '.gpMeta{font-size:.8rem;color:#aaa;margin-top:4px}',
         '#gpDetail{display:none;height:calc(100% - 66px);overflow-y:auto}',
-        '#gpDetail h2{color:#ffd700;margin:8px 0 10px;font-size:1.5rem}',
+        '#gpDetail h2{color:#ffd700;margin:8px 0 5px;font-size:1.5rem}',
+        '#gpDetailIds{color:#9fd2ff;font-size:.93rem;margin-bottom:12px;word-break:break-word}',
         '.gpPatch{padding:10px 11px;margin:7px 0;border-left:3px solid #ffd700;background:#151b27;border-radius:5px}',
         '.gpPatchName{font-weight:800;color:#fff}',
         '.gpPatchInfo{font-size:.82rem;color:#aaa;margin-top:4px;line-height:1.35}',
-        '.gpActions{position:sticky;bottom:0;background:rgba(12,16,25,.98);padding:12px 0 3px;display:flex;gap:8px}',
-        '.gpAction{display:inline-block;border:1px solid #777;border-radius:8px;padding:10px 14px;color:#fff;background:#202020;font-weight:800;cursor:pointer}',
-        '#gpInstall{border-color:#42d66b;background:#147a32;color:#fff;flex:1;font-size:1rem}',
-        '#gpInstall:disabled{opacity:.55;cursor:default}',
-        '#gpToast{display:none;position:fixed;z-index:1000000;left:50%;top:18px;transform:translateX(-50%);max-width:86%;padding:12px 18px;border-radius:9px;background:#102017;border:1px solid #42d66b;color:#fff;font-family:Arial,sans-serif;font-weight:800;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.55)}',
+        '.gpActions{position:sticky;bottom:0;background:rgba(12,16,25,.98);padding:11px 0 3px;display:flex;gap:8px}',
+        '.gpAction{display:inline-block;text-decoration:none;border:1px solid #ffd700;border-radius:8px;padding:9px 12px;color:#ffd700;background:#181818;font-weight:800;cursor:pointer}',
+        '.gpHint{font-size:.82rem;color:#c9c9c9;margin:10px 0 4px;line-height:1.4}',
         '@media(max-width:700px){#gpPanel{left:2%;top:2%;width:96%;height:96%;padding:13px}#gpTitle{font-size:1.2rem}.gpGameName{font-size:.95rem}}'
     ].join('');
     document.head.appendChild(css);
@@ -44,18 +44,19 @@
       '<div id="gpPanel">' +
         '<div id="gpTop"><div id="gpTitle">GAME PATCHES</div><button id="gpClose" type="button">CLOSE</button></div>' +
         '<div id="gpBrowse">' +
-          '<input id="gpSearch" type="text" autocomplete="off" placeholder="Search game...">' +
+          '<input id="gpSearch" type="text" autocomplete="off" placeholder="Search game or CUSA...">' +
           '<div id="gpCount"></div>' +
           '<div id="gpList"></div>' +
         '</div>' +
         '<div id="gpDetail">' +
           '<h2 id="gpDetailTitle"></h2>' +
+          '<div id="gpDetailIds"></div>' +
           '<div id="gpPatchList"></div>' +
-          '<div class="gpActions"><button class="gpAction" id="gpBack" type="button">BACK</button><button class="gpAction" id="gpInstall" type="button">INSTALL PATCH</button></div>' +
+          '<div class="gpHint">GoldHEN patch path: /user/data/GoldHEN/patches/xml/</div>' +
+          '<div class="gpActions"><button class="gpAction" id="gpBack" type="button">BACK</button><a class="gpAction" id="gpOpenXml" href="#" target="_blank">OPEN XML</a></div>' +
         '</div>' +
       '</div>';
     document.body.appendChild(overlay);
-    var toast = document.createElement('div'); toast.id='gpToast'; document.body.appendChild(toast);
 
     var data = window.SHETOS_PATCHES;
     var list = document.getElementById('gpList');
@@ -63,28 +64,23 @@
     var search = document.getElementById('gpSearch');
     var browse = document.getElementById('gpBrowse');
     var detail = document.getElementById('gpDetail');
-    var currentIndex = -1;
 
     function esc(s){
       s = String(s || '');
       return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-    }
-    function showToast(msg, bad){
-      toast.textContent=msg; toast.style.borderColor=bad?'#ff5a5a':'#42d66b'; toast.style.background=bad?'#2a1010':'#102017'; toast.style.display='block';
-      setTimeout(function(){toast.style.display='none';},6500);
     }
     function showList(q){
       q = String(q || '').toUpperCase();
       var html = '', shown = 0;
       for (var i=0;i<data.length;i++) {
         var g=data[i];
-        var hay=(g.title+' '+g.ids.join(' ')).toUpperCase();
+        var hay=(g.title+' '+g.ids.join(' ')+' '+g.file).toUpperCase();
         if (q && hay.indexOf(q) === -1) continue;
-        html += '<div class="gpGame" tabindex="0" data-i="'+i+'"><div class="gpGameName">'+esc(g.title)+'</div><div class="gpMeta">'+g.patches.length+' patch'+(g.patches.length===1?'':'es')+'</div></div>';
+        html += '<div class="gpGame" tabindex="0" data-i="'+i+'"><div class="gpGameName">'+esc(g.title)+'</div><div class="gpIds">'+esc(g.ids.join(' • '))+'</div><div class="gpMeta">'+g.patches.length+' patch'+(g.patches.length===1?'':'es')+' • '+esc(g.file)+'</div></div>';
         shown++;
       }
       list.innerHTML=html || '<div style="padding:20px;color:#bbb">No matching game found.</div>';
-      count.innerHTML=shown+' games shown';
+      count.innerHTML=shown+' games shown • 154 XML files • 504 patches';
       var nodes=list.getElementsByClassName('gpGame');
       for(var j=0;j<nodes.length;j++){
         nodes[j].onclick=function(){openGame(parseInt(this.getAttribute('data-i'),10));};
@@ -92,42 +88,24 @@
       }
     }
     function openGame(i){
-      currentIndex=i;
       var g=data[i], html='';
       document.getElementById('gpDetailTitle').innerHTML=esc(g.title);
+      document.getElementById('gpDetailIds').innerHTML=esc(g.ids.join(' • '));
       for(var p=0;p<g.patches.length;p++){
         var x=g.patches[p];
-        html += '<div class="gpPatch"><div class="gpPatchName">'+esc(x.name || 'Patch')+'</div><div class="gpPatchInfo">Game version '+esc(x.appVer || '-')+(x.note?'<br>'+esc(x.note):'')+'</div></div>';
+        html += '<div class="gpPatch"><div class="gpPatchName">'+esc(x.name || 'Patch')+'</div><div class="gpPatchInfo">App '+esc(x.appVer || '-')+' • Patch '+esc(x.patchVer || '-')+(x.author?' • '+esc(x.author):'')+(x.note?'<br>'+esc(x.note):'')+'</div></div>';
       }
       document.getElementById('gpPatchList').innerHTML=html;
-      browse.style.display='none'; detail.style.display='block'; detail.scrollTop=0;
+      document.getElementById('gpOpenXml').href='patches/xml/'+encodeURIComponent(g.file);
+      browse.style.display='none'; detail.style.display='block';
+      detail.scrollTop=0;
     }
-    function back(){ detail.style.display='none'; browse.style.display='block'; currentIndex=-1; search.focus(); }
+    function back(){ detail.style.display='none'; browse.style.display='block'; search.focus(); }
     function close(){ overlay.style.display='none'; }
-    function install(){
-      if(currentIndex<0) return;
-      var g=data[currentIndex];
-      try {
-        localStorage.setItem('shetosPatchInstall', JSON.stringify({src:'patches/xml/'+g.file, ids:g.ids, title:g.title, ts:Date.now()}));
-        localStorage.removeItem('shetosPatchInstallResult');
-        var b=document.getElementById('gpInstall'); b.disabled=true; b.textContent='PREPARING INSTALL...';
-        setTimeout(function(){ location.reload(); },300);
-      } catch(e) { showToast('Could not start patch installation.', true); }
-    }
-
     button.onclick=function(){overlay.style.display='block';back();showList(search.value);};
     document.getElementById('gpClose').onclick=close;
     document.getElementById('gpBack').onclick=back;
-    document.getElementById('gpInstall').onclick=install;
     search.onkeyup=function(){showList(this.value);};
     overlay.onclick=function(e){e=e||window.event;if(e.target===overlay)close();};
     showList('');
-
-    try {
-      var result=JSON.parse(localStorage.getItem('shetosPatchInstallResult')||'null');
-      if(result){
-        localStorage.removeItem('shetosPatchInstallResult');
-        setTimeout(function(){showToast(result.ok ? ('PATCH INSTALLED: '+(result.title||'Game')) : ('INSTALL FAILED: '+(result.error||'Unknown error')), !result.ok);},800);
-      }
-    } catch(e){}
 })();

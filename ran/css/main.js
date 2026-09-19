@@ -8,50 +8,6 @@ function load_script(src, remote = true, transfer = []) {
   });
 }
 
-
-async function shetosInstallPendingPatchCss() {
-  let req = null;
-  try { req = JSON.parse(localStorage.getItem("shetosPatchInstall") || "null"); } catch (e) {}
-  if (!req || !req.src || !req.ids || !req.ids.length) return false;
-  try {
-    const rsp = await fetch(req.src);
-    if (!rsp.ok) throw new Error("patch download failed");
-    const raw = new Uint8Array(await rsp.arrayBuffer());
-    if (!raw.length) throw new Error("empty patch");
-    const ab = mem.alloc(raw.length, false);
-    new Uint8Array(ab).set(raw);
-    const ptr = ab.data();
-    const O_WRONLY = 0x0001, O_CREAT = 0x0200, O_TRUNC = 0x0400;
-    for (const d of ["/user/data/GoldHEN", "/user/data/GoldHEN/patches", "/user/data/GoldHEN/patches/xml"]) {
-      try { fn.mkdir.invoke(d.cstr(), 0x1ff); } catch (e) {}
-    }
-    for (const rawId of req.ids) {
-      const id = String(rawId || "").toUpperCase();
-      if (!/^CUSA[0-9A-Z]+$/.test(id)) continue;
-      const path = ("/user/data/GoldHEN/patches/xml/" + id + ".xml").cstr();
-      const fd = fn.open.invoke(path, O_WRONLY | O_CREAT | O_TRUNC, 0x1b6);
-      if (fd < 0) throw new Error("cannot open patch folder");
-      try {
-        let off = 0;
-        while (off < raw.length) {
-          const n64 = fn.write.invoke(fd, ptr.add(off), raw.length - off);
-          if (n64.eq(-1) || n64.lo === 0) throw new Error("write failed");
-          off += n64.lo;
-        }
-      } finally {
-        try { fn.close.invoke(fd); } catch (e) {}
-      }
-    }
-    localStorage.removeItem("shetosPatchInstall");
-    localStorage.setItem("shetosPatchInstallResult", JSON.stringify({ok:true,title:req.title || "Game"}));
-    return true;
-  } catch (e) {
-    localStorage.removeItem("shetosPatchInstall");
-    localStorage.setItem("shetosPatchInstallResult", JSON.stringify({ok:false,title:req && req.title,error:(e && e.message) ? e.message : "Install failed"}));
-    return false;
-  }
-}
-
 async function doJb() {
   await load_script("css/misc.js");
 
@@ -97,9 +53,7 @@ async function doJb() {
     }
 
     if (fn.setuid.invoke(0) !== -1) {
-      const installed = await shetosInstallPendingPatchCss();
-      msgs.innerHTML = installed ? "Patch Installed Successfully ..." : "GoldHEN is Already Loaded ...";
-      if (installed) setTimeout(function(){ location.reload(); }, 1200);
+      msgs.innerHTML = "GoldHEN is Already Loaded ...";
       return;
     }
 
