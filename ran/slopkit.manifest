@@ -1,4 +1,5 @@
-CACHE MANIFEST 
+CACHE MANIFEST
+# GTA-TRAINER-CACHE: 20260919-v1 
 # CACHE-LAYOUT-BUILD: 20260918-left-v1
 # SHETOS-NAME-BUILD: 20260917-v1
 # XGAME-BG-BUILD: 20260917-new-blue-bg-v2-fixed
@@ -20,6 +21,34 @@ slopkit\patches\1150.bin
 slopkit\patches\1200.bin
 slopkit\patches\1250.bin
 slopkit\patches\1300.bin
+
+../gta-trainer/BigInteger.min.js
+../gta-trainer/CUSA00411.jpg
+../gta-trainer/CUSA00411_01.23.json
+../gta-trainer/CUSA00411_01.27.json
+../gta-trainer/CUSA00411_01.33.json
+../gta-trainer/bootstrap.js
+../gta-trainer/bootstrap.min.css
+../gta-trainer/error.png
+../gta-trainer/favicon.ico
+../gta-trainer/favicon.png
+../gta-trainer/font-awesome.min.css
+../gta-trainer/fontawesome-webfont.eot
+../gta-trainer/fontawesome-webfont.svg
+../gta-trainer/fontawesome-webfont.ttf
+../gta-trainer/fontawesome-webfont.woff
+../gta-trainer/fontawesome-webfont.woff2
+../gta-trainer/index.html
+../gta-trainer/jquery.min.js
+../gta-trainer/lazyload.min.js
+../gta-trainer/list.json
+../gta-trainer/loadingoverlay.min.js
+../gta-trainer/main.css
+../gta-trainer/main.js
+../gta-trainer/main_loader.gif
+../gta-trainer/search-icon.png
+../gta-trainer/trainer.cache
+../gta-trainer/wallpaper.jpg
 
 NETWORK:
 *
