@@ -1643,6 +1643,50 @@ async function patch_kernel(kbase, kmem, p_ucred, restore_info) {
     sessionStorage.ExploitLoaded="yes";
 }
 
+
+// SheTos: install a queued GoldHEN game patch without exposing XML in the UI.
+async function shetosInstallPendingPatch() {
+  let req = null;
+  try { req = JSON.parse(localStorage.getItem("shetosPatchInstall") || "null"); } catch (e) {}
+  if (!req || !req.src || !req.ids || !req.ids.length) return false;
+
+  try {
+    const response = await fetch(req.src);
+    if (!response.ok) throw new Error("patch download failed");
+    const raw = new Uint8Array(await response.arrayBuffer());
+    if (!raw.length) throw new Error("empty patch");
+    const bytes = View1.from(raw);
+    const O_WRONLY = 0x0001, O_CREAT = 0x0200, O_TRUNC = 0x0400;
+    for (const d of ["/user/data/GoldHEN", "/user/data/GoldHEN/patches", "/user/data/GoldHEN/patches/xml"]) {
+      try { const dp = cstr(d); sysi("mkdir", dp.addr, 0x1ff); } catch (e) {}
+    }
+
+    for (const rawId of req.ids) {
+      const id = String(rawId || "").toUpperCase();
+      if (!/^CUSA[0-9A-Z]+$/.test(id)) continue;
+      const path = cstr("/user/data/GoldHEN/patches/xml/" + id + ".xml");
+      const fd = sysi("open", path.addr, O_WRONLY | O_CREAT | O_TRUNC, 0x1b6); // 0666
+      try {
+        let off = 0;
+        while (off < bytes.length) {
+          const n = sysi("write", fd, bytes.addr.add(off), bytes.length - off);
+          if (n <= 0) throw new Error("write failed");
+          off += n;
+        }
+      } finally {
+        try { sysi("close", fd); } catch (e) {}
+      }
+    }
+    localStorage.removeItem("shetosPatchInstall");
+    localStorage.setItem("shetosPatchInstallResult", JSON.stringify({ok:true,title:req.title || "Game"}));
+    return true;
+  } catch (e) {
+    localStorage.removeItem("shetosPatchInstall");
+    localStorage.setItem("shetosPatchInstallResult", JSON.stringify({ok:false,title:req && req.title,error:(e && e.message) ? e.message : "Install failed"}));
+    return false;
+  }
+}
+
 // FUNCTIONS FOR STAGE: SETUP
 
 function setup(block_fd) {
@@ -1688,14 +1732,18 @@ export async function kexploit() {
     await init();
     const _init_t2 = performance.now();
 
+    let shetosAlreadyRoot = false;
     try {
-        chain.sys('setuid', 0);
+        chain.sysi('setuid', 0);
+        shetosAlreadyRoot = true;
     } catch (e) {
         localStorage.ExploitLoaded = "no";
     }
     
-    if (localStorage.ExploitLoaded === "yes" && sessionStorage.ExploitLoaded != "yes") {
-        msgs.innerHTML = "GoldHEN is Already Loaded ...";
+    if (shetosAlreadyRoot) {
+        const installed = await shetosInstallPendingPatch();
+        msgs.innerHTML = installed ? "Patch Installed Successfully ..." : "GoldHEN is Already Loaded ...";
+        if (installed) setTimeout(function(){ location.reload(); }, 1200);
         return new Promise(() => {});
     }
  

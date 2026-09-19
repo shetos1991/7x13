@@ -1277,6 +1277,7 @@ function init_syscalls() {
   fn.write = new NativeFunction(0x4, "bint");
   fn.open = new NativeFunction(0x5, "number");
   fn.close = new NativeFunction(0x6, "number");
+  fn.mkdir = new NativeFunction(0x88, "number");
   fn.fstat = new NativeFunction(0xbd, "number");
   fn.sysctl = new NativeFunction(0xca, "number");
   fn.nanosleep = new NativeFunction(0xf0, "number");

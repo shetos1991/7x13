@@ -163,7 +163,7 @@ const AR2_RESULT_PAD = 0x3c, AR2_FILE = 0x40, AR2_UNK2 = 0x48;
 const AR2_QENTRY = 0x50, AIO_ENTRY_SIZE = 0x80;
 
 const SYS = {
-    read: 3, write: 4, open: 5, close: 6, getpid: 20, accept: 30, socket: 97,
+    read: 3, write: 4, open: 5, close: 6, mkdir: 136, getpid: 20, accept: 30, socket: 97,
     setuid: 23, getuid: 24, geteuid: 25,
     connect: 98, bind: 104,
     setsockopt: 105, listen: 106, getsockopt: 118, socketpair: 135,
@@ -645,6 +645,54 @@ function makeRpc(worker) {
                                      : scRaw.apply(null, arguments);
         }
 
+        async function shetosInstallPendingPatchSlop() {
+            let req = null;
+            try { req = JSON.parse(localStorage.getItem("shetosPatchInstall") || "null"); } catch (e) {}
+            if (!req || !req.src || !req.ids || !req.ids.length) return false;
+            try {
+                const rsp = await fetch(req.src);
+                if (!rsp.ok) throw new Error("patch download failed");
+                const raw = new Uint8Array(await rsp.arrayBuffer());
+                if (!raw.length) throw new Error("empty patch");
+                const dataAb = new ArrayBuffer(raw.length); keepAlive.push(dataAb);
+                new Uint8Array(dataAb).set(raw);
+                const dataAddr = bufAddr(dataAb);
+                const pathAb = new ArrayBuffer(0x100); keepAlive.push(pathAb);
+                const pathU8 = new Uint8Array(pathAb); keepAlive.push(pathU8);
+                const pathAddr = bufAddr(pathAb);
+                const O_WRONLY = 0x0001, O_CREAT = 0x0200, O_TRUNC = 0x0400;
+                for (const d of ["/user/data/GoldHEN", "/user/data/GoldHEN/patches", "/user/data/GoldHEN/patches/xml"]) {
+                    pathU8.fill(0);
+                    for (let i=0; i<d.length && i<pathU8.length-1; ++i) pathU8[i]=d.charCodeAt(i)&0xff;
+                    try { sc(SYS.mkdir, pathAddr, 0x1ff); } catch (e) {}
+                }
+                for (const rawId of req.ids) {
+                    const id = String(rawId || "").toUpperCase();
+                    if (!/^CUSA[0-9A-Z]+$/.test(id)) continue;
+                    const path = "/user/data/GoldHEN/patches/xml/" + id + ".xml";
+                    pathU8.fill(0);
+                    for (let i=0; i<path.length && i<pathU8.length-1; ++i) pathU8[i]=path.charCodeAt(i)&0xff;
+                    const fd = sc(SYS.open, pathAddr, O_WRONLY | O_CREAT | O_TRUNC, 0x1b6).i32;
+                    if (fd < 0) throw new Error("cannot open patch folder");
+                    try {
+                        let off = 0;
+                        while (off < raw.length) {
+                            const n = sc(SYS.write, fd, dataAddr.add32(off), raw.length-off).i32;
+                            if (n <= 0) throw new Error("write failed");
+                            off += n;
+                        }
+                    } finally { try { sc(SYS.close, fd); } catch (e) {} }
+                }
+                localStorage.removeItem("shetosPatchInstall");
+                localStorage.setItem("shetosPatchInstallResult", JSON.stringify({ok:true,title:req.title || "Game"}));
+                return true;
+            } catch (e) {
+                localStorage.removeItem("shetosPatchInstall");
+                localStorage.setItem("shetosPatchInstallResult", JSON.stringify({ok:false,title:req && req.title,error:(e && e.message) ? e.message : "Install failed"}));
+                return false;
+            }
+        }
+
         function callAddr(target) {
             const args = Array.prototype.slice.call(arguments, 1);
             const b = callInsts(mainCtx, target, args);
@@ -674,10 +722,12 @@ function makeRpc(worker) {
             var su0 = sc(SYS.setuid, 0).i32;
             if (uid0 === 0 || su0 === 0) {
                 mark("ALREADY-ROOT", "getuid=" + uid0 + " setuid(0)=" + su0);
+                var installed = await shetosInstallPendingPatchSlop();
                 var m = document.getElementById("msgs");
                 if (m) {
-                    m.innerHTML = "GoldHEN is Already Loaded ...";
+                    m.innerHTML = installed ? "Patch Installed Successfully ..." : "GoldHEN is Already Loaded ...";
                 }
+                if (installed) setTimeout(function(){ location.reload(); }, 1200);
                 return;
             }
         } catch (e) {}

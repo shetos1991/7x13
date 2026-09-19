@@ -45,6 +45,7 @@ export const syscall_map = new Map(
     getsockopt: 118,
     fchmod: 124,
     socketpair: 135,
+    mkdir: 136,
     fstat: 189,
     getdirentries: 196,
     __sysctl: 202,
